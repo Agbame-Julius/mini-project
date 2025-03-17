@@ -18,8 +18,8 @@ public class S3Service {
     @Autowired
     private AmazonS3 amazonS3;
 
-    @Value("${aws.bucketName}")
-    private String bucketName;
+
+    private String bucketName = "my-bucket-for-project";
 
     /**
      * Upload a file to S3
