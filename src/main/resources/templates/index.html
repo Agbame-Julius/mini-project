@@ -1,0 +1,771 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>S3 File Manager</title>
+    <style>
+        :root {
+            --primary-color: #3498db;
+            --secondary-color: #2980b9;
+            --success-color: #2ecc71;
+            --danger-color: #e74c3c;
+            --text-color: #2c3e50;
+            --light-bg: #ecf0f1;
+            --border-radius: 8px;
+            --box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            background-color: #f9f9f9;
+            color: var(--text-color);
+            line-height: 1.6;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+
+        h1 {
+            color: var(--primary-color);
+            margin-bottom: 10px;
+            font-size: 2.5rem;
+        }
+
+        p.subtitle {
+            color: #7f8c8d;
+            font-size: 1.1rem;
+        }
+
+        .app-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 30px;
+        }
+
+        .panel {
+            flex: 1;
+            min-width: 300px;
+            background-color: white;
+            border-radius: var(--border-radius);
+            padding: 25px;
+            box-shadow: var(--box-shadow);
+        }
+
+        .panel-header {
+            border-bottom: 1px solid var(--light-bg);
+            padding-bottom: 15px;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+        }
+
+        .panel-icon {
+            background-color: var(--primary-color);
+            color: white;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 15px;
+            font-size: 1.2rem;
+        }
+
+        h2 {
+            font-size: 1.5rem;
+            color: var(--text-color);
+        }
+
+        .drop-area {
+            border: 3px dashed var(--light-bg);
+            border-radius: var(--border-radius);
+            padding: 30px;
+            text-align: center;
+            margin: 20px 0;
+            transition: all 0.3s ease;
+            position: relative;
+        }
+
+        .drop-area.highlight {
+            border-color: var(--primary-color);
+            background-color: rgba(52, 152, 219, 0.05);
+        }
+
+        .file-input {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            top: 0;
+            left: 0;
+            opacity: 0;
+            cursor: pointer;
+        }
+
+        .btn {
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            border-radius: var(--border-radius);
+            cursor: pointer;
+            font-size: 1rem;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .btn:hover {
+            background-color: var(--secondary-color);
+            transform: translateY(-2px);
+        }
+
+        .btn-secondary {
+            background-color: var(--light-bg);
+            color: var(--text-color);
+        }
+
+        .btn-secondary:hover {
+            background-color: #d0d7dc;
+        }
+
+        .btn-success {
+            background-color: var(--success-color);
+        }
+
+        .btn-success:hover {
+            background-color: #27ae60;
+        }
+
+        .btn-danger {
+            background-color: var(--danger-color);
+        }
+
+        .btn-danger:hover {
+            background-color: #c0392b;
+        }
+
+        .file-list {
+            margin-top: 30px;
+        }
+
+        .file-item {
+            display: flex;
+            align-items: center;
+            padding: 15px;
+            background-color: var(--light-bg);
+            border-radius: var(--border-radius);
+            margin-bottom: 10px;
+            transition: all 0.3s ease;
+        }
+
+        .file-item:hover {
+            transform: translateX(5px);
+        }
+
+        .file-icon {
+            width: 40px;
+            height: 40px;
+            background-color: white;
+            border-radius: 5px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 15px;
+            font-size: 1.2rem;
+            color: var(--primary-color);
+        }
+
+        .file-details {
+            flex: 1;
+        }
+
+        .file-name {
+            font-weight: 600;
+            margin-bottom: 3px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: 250px;
+        }
+
+        .file-meta {
+            font-size: 0.8rem;
+            color: #7f8c8d;
+        }
+
+        .file-actions {
+            display: flex;
+            gap: 5px;
+        }
+
+        .btn-icon {
+            width: 36px;
+            height: 36px;
+            padding: 0;
+        }
+
+        .progress-bar-container {
+            height: 10px;
+            background-color: var(--light-bg);
+            border-radius: 5px;
+            margin: 20px 0;
+            overflow: hidden;
+        }
+
+        .progress-bar {
+            height: 100%;
+            background-color: var(--primary-color);
+            width: 0;
+            transition: width 0.3s ease;
+        }
+
+        .status-message {
+            padding: 15px;
+            border-radius: var(--border-radius);
+            margin: 20px 0;
+            display: none;
+        }
+
+        .status-message.success {
+            background-color: rgba(46, 204, 113, 0.2);
+            color: #27ae60;
+            border-left: 4px solid var(--success-color);
+        }
+
+        .status-message.error {
+            background-color: rgba(231, 76, 60, 0.2);
+            color: #c0392b;
+            border-left: 4px solid var(--danger-color);
+        }
+
+        .search-container {
+            margin-bottom: 20px;
+            position: relative;
+        }
+
+        .search-input {
+            width: 100%;
+            padding: 12px 12px 12px 40px;
+            border: 1px solid var(--light-bg);
+            border-radius: var(--border-radius);
+            font-size: 1rem;
+        }
+
+        .search-icon {
+            position: absolute;
+            left: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #7f8c8d;
+        }
+
+        .loader {
+            border: 3px solid rgba(0, 0, 0, 0.1);
+            border-top: 3px solid var(--primary-color);
+            border-radius: 50%;
+            width: 24px;
+            height: 24px;
+            animation: spin 1s linear infinite;
+            display: inline-block;
+            vertical-align: middle;
+            margin-right: 10px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .loading-text {
+            display: none;
+            text-align: center;
+            color: #7f8c8d;
+            margin: 20px 0;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 30px;
+            color: #7f8c8d;
+        }
+
+        .empty-state-icon {
+            font-size: 4rem;
+            margin-bottom: 20px;
+            color: var(--light-bg);
+        }
+
+        @media (max-width: 768px) {
+            .app-container {
+                flex-direction: column;
+            }
+            .panel {
+                min-width: 100%;
+            }
+        }
+
+        .pagination-controls {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 10px;
+            margin-top: 20px;
+        }
+
+        #pageInfo {
+            font-size: 1.1rem;
+            color: var(--text-color);
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <header>
+        <h1>S3 File Manager</h1>
+        <p class="subtitle">Upload, manage, and download your files securely</p>
+    </header>
+
+    <div class="app-container">
+        <!-- Upload Panel -->
+        <div class="panel">
+            <div class="panel-header">
+                <div class="panel-icon">↑</div>
+                <h2>Upload Files</h2>
+            </div>
+            <div class="drop-area" id="dropArea">
+                <svg width="80" height="80" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M12 16L12 8" stroke="#7f8c8d" stroke-width="2" stroke-linecap="round"/>
+                    <path d="M9 11L12 8L15 11" stroke="#7f8c8d" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    <path d="M20 16.7428C21.2215 15.734 22 14.2079 22 12.5C22 9.46243 19.5376 7 16.5 7C16.2815 7 16.0771 6.886 15.9661 6.69774C14.6621 4.48484 12.2544 3 9.5 3C5.35786 3 2 6.35786 2 10.5C2 12.5661 2.83545 14.4371 4.18695 15.7935" stroke="#7f8c8d" stroke-width="2" stroke-linecap="round"/>
+                    <path d="M8 16H16V21C16 21.5523 15.5523 22 15 22H9C8.44772 22 8 21.5523 8 21V16Z" stroke="#7f8c8d" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+                <h3>Drag & Drop Files</h3>
+                <p>or click to browse your files</p>
+                <input type="file" class="file-input" id="fileInput" multiple>
+            </div>
+
+            <div class="progress-bar-container" id="progressContainer" style="display: none;">
+                <div class="progress-bar" id="progressBar"></div>
+            </div>
+
+            <div class="status-message success" id="successMessage">
+                File uploaded successfully!
+            </div>
+
+            <div class="status-message error" id="errorMessage">
+                Error uploading file. Please try again.
+            </div>
+
+            <div style="text-align: center; margin-top: 20px;">
+                <button class="btn btn-success" id="uploadBtn">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M12 16L12 8" stroke="white" stroke-width="2" stroke-linecap="round"/>
+                        <path d="M9 11L12 8L15 11" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        <path d="M8 16H16V21C16 21.5523 15.5523 22 15 22H9C8.44772 22 8 21.5523 8 21V16Z" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        <path d="M20 16.7428C21.2215 15.734 22 14.2079 22 12.5C22 9.46243 19.5376 7 16.5 7C16.2815 7 16.0771 6.886 15.9661 6.69774C14.6621 4.48484 12.2544 3 9.5 3C5.35786 3 2 6.35786 2 10.5C2 12.5661 2.83545 14.4371 4.18695 15.7935" stroke="white" stroke-width="2" stroke-linecap="round"/>
+                    </svg>
+                    Upload to S3
+                </button>
+            </div>
+        </div>
+
+        <!-- File List Panel -->
+        <div class="panel">
+            <div class="panel-header">
+                <div class="panel-icon">📁</div>
+                <h2>Your Files</h2>
+            </div>
+
+            <div class="search-container">
+                <span class="search-icon">🔍</span>
+                <input type="text" class="search-input" id="searchInput" placeholder="Search files...">
+            </div>
+
+            <div class="loading-text" id="loadingText">
+                <span class="loader"></span> Loading files...
+            </div>
+
+            <div class="file-list" id="fileList">
+                <!-- Files will be loaded here dynamically -->
+                <div class="empty-state" id="emptyState">
+                    <div class="empty-state-icon">
+                        <svg width="80" height="80" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M20 8.5V20.5C20 21.0523 19.5523 21.5 19 21.5H5C4.44772 21.5 4 21.0523 4 20.5V3.5C4 2.94772 4.44772 2.5 5 2.5H14" stroke="#d0d7dc" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                            <path d="M14 2.5V8.5H20" stroke="#d0d7dc" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                            <circle cx="12" cy="15.5" r="3" stroke="#d0d7dc" stroke-width="2"/>
+                        </svg>
+                    </div>
+                </div>
+                <div class="pagination-controls">
+                    <button id="prevPage" class="btn btn-secondary">Previous</button>
+                    <span id="pageInfo">Page 1</span>
+                    <button id="nextPage" class="btn btn-secondary">Next</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+    <!-- Thymeleaf Variables -->
+    <script th:inline="javascript">
+        /*<![CDATA[*/
+        const apiEndpoint = /*[[${apiEndpoint}]]*/ '/api';
+        const bucketName = /*[[${bucketName}]]*/ 'my-s3-bucket';
+        const csrfToken = /*[[${_csrf != null ? _csrf.token : ''}]]*/ '';
+        const csrfHeader = /*[[${_csrf != null ? _csrf.headerName : 'X-CSRF-TOKEN'}]]*/ 'X-CSRF-TOKEN';
+        /*]]>*/
+    </script>
+
+    <!-- JavaScript -->
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Elements
+            const dropArea = document.getElementById('dropArea');
+            const fileInput = document.getElementById('fileInput');
+            const uploadBtn = document.getElementById('uploadBtn');
+            const progressContainer = document.getElementById('progressContainer');
+            const progressBar = document.getElementById('progressBar');
+            const successMessage = document.getElementById('successMessage');
+            const errorMessage = document.getElementById('errorMessage');
+            const fileList = document.getElementById('fileList');
+            const loadingText = document.getElementById('loadingText');
+            const emptyState = document.getElementById('emptyState');
+            const searchInput = document.getElementById('searchInput');
+
+            // Selected files
+            let selectedFiles = [];
+
+            // Event listeners for drag and drop
+            ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+                dropArea.addEventListener(eventName, preventDefaults, false);
+            });
+
+            function preventDefaults(e) {
+                e.preventDefault();
+                e.stopPropagation();
+            }
+
+            ['dragenter', 'dragover'].forEach(eventName => {
+                dropArea.addEventListener(eventName, highlight, false);
+            });
+
+            ['dragleave', 'drop'].forEach(eventName => {
+                dropArea.addEventListener(eventName, unhighlight, false);
+            });
+
+            function highlight() {
+                dropArea.classList.add('highlight');
+            }
+
+            function unhighlight() {
+                dropArea.classList.remove('highlight');
+            }
+
+            // Handle dropped files
+            dropArea.addEventListener('drop', handleDrop, false);
+
+            function handleDrop(e) {
+                const dt = e.dataTransfer;
+                const files = dt.files;
+                handleFiles(files);
+            }
+
+            // Handle selected files
+            fileInput.addEventListener('change', function() {
+                handleFiles(this.files);
+            });
+
+            function handleFiles(files) {
+                selectedFiles = Array.from(files);
+                updateUploadButtonState();
+            }
+
+            function updateUploadButtonState() {
+                if (selectedFiles.length > 0) {
+                    uploadBtn.removeAttribute('disabled');
+                    uploadBtn.textContent = `Upload ${selectedFiles.length} file${selectedFiles.length > 1 ? 's' : ''}`;
+                } else {
+                    uploadBtn.setAttribute('disabled', 'true');
+                    uploadBtn.textContent = 'Upload to S3';
+                }
+            }
+
+            // Upload files
+            uploadBtn.addEventListener('click', uploadFiles);
+
+            function uploadFiles() {
+                if (selectedFiles.length === 0) return;
+
+                // Reset progress
+                progressContainer.style.display = 'block';
+                progressBar.style.width = '0%';
+                hideMessages();
+
+                const totalFiles = selectedFiles.length;
+                let uploadedFiles = 0;
+
+                selectedFiles.forEach(file => {
+                    uploadFile(file, function(success) {
+                        uploadedFiles++;
+                        const percentComplete = (uploadedFiles / totalFiles) * 100;
+                        progressBar.style.width = percentComplete + '%';
+
+                        if (uploadedFiles === totalFiles) {
+                            finishUpload(true);
+                        }
+                    }, function(error) {
+                        console.error('Error uploading file:', error);
+                        finishUpload(false);
+                    });
+                });
+            }
+
+            function uploadFile(file, onSuccess, onError) {
+                const formData = new FormData();
+                formData.append('file', file);
+
+                const xhr = new XMLHttpRequest();
+                xhr.open('POST', `${apiEndpoint}/upload`, true);
+
+                // Add CSRF token if available
+                if (csrfToken) {
+                    xhr.setRequestHeader(csrfHeader, csrfToken);
+                }
+
+                xhr.onload = function() {
+                    if (xhr.status === 200) {
+                        onSuccess(xhr.responseText);
+                    } else {
+                        onError(xhr.statusText);
+                    }
+                };
+
+                xhr.onerror = function() {
+                    onError('Network error');
+                };
+
+                xhr.send(formData);
+            }
+
+            function finishUpload(success) {
+                setTimeout(function() {
+                    progressContainer.style.display = 'none';
+                    if (success) {
+                        showSuccessMessage();
+                        loadFiles(); // Refresh file list
+                        selectedFiles = [];
+                        fileInput.value = '';
+                        updateUploadButtonState();
+                    } else {
+                        showErrorMessage();
+                    }
+                }, 500);
+            }
+
+            // Messages
+            function hideMessages() {
+                successMessage.style.display = 'none';
+                errorMessage.style.display = 'none';
+            }
+
+            function showSuccessMessage() {
+                successMessage.style.display = 'block';
+                setTimeout(hideMessages, 5000);
+            }
+
+            function showErrorMessage() {
+                errorMessage.style.display = 'block';
+                setTimeout(hideMessages, 5000);
+            }
+
+            // Load files from S3
+            function loadFiles(searchTerm = '') {
+                loadingText.style.display = 'block';
+                fileList.innerHTML = '';
+
+                fetch(`${apiEndpoint}/files?search=${encodeURIComponent(searchTerm)}`)
+                    .then(response => response.json())
+                    .then(data => {
+                        loadingText.style.display = 'none';
+
+                        if (data.length === 0) {
+                            emptyState.style.display = 'block';
+                            return;
+                        }
+
+                        emptyState.style.display = 'none';
+
+                        data.forEach(file => {
+                            const fileItem = createFileItem(file);
+                            fileList.appendChild(fileItem);
+                        });
+                    })
+                    .catch(error => {
+                        loadingText.style.display = 'none';
+                        console.error('Error loading files:', error);
+
+                        // Show empty state with error
+                        emptyState.innerHTML = `
+                        <div class="empty-state-icon">⚠️</div>
+                        <h3>Unable to load files</h3>
+                        <p>There was an error connecting to the server</p>
+                    `;
+                        emptyState.style.display = 'block';
+                    });
+            }
+
+            function createFileItem(file) {
+                const fileExt = file.name.split('.').pop().toLowerCase();
+                let fileIcon = '📄';
+
+                // Set icon based on file type
+                if (['jpg', 'jpeg', 'png', 'gif', 'svg'].includes(fileExt)) {
+                    fileIcon = '🖼️';
+                } else if (['pdf'].includes(fileExt)) {
+                    fileIcon = '📑';
+                } else if (['doc', 'docx'].includes(fileExt)) {
+                    fileIcon = '📝';
+                } else if (['xls', 'xlsx', 'csv'].includes(fileExt)) {
+                    fileIcon = '📊';
+                } else if (['zip', 'rar', '7z'].includes(fileExt)) {
+                    fileIcon = '🗜️';
+                } else if (['mp3', 'wav', 'ogg'].includes(fileExt)) {
+                    fileIcon = '🎵';
+                } else if (['mp4', 'avi', 'mov'].includes(fileExt)) {
+                    fileIcon = '🎬';
+                }
+
+                const fileItem = document.createElement('div');
+                fileItem.className = 'file-item';
+                fileItem.innerHTML = `
+                <div class="file-icon">${fileIcon}</div>
+                <div class="file-details">
+                    <div class="file-name">${file.name}</div>
+                    <div class="file-meta">
+                        ${formatSize(file.size)} • ${formatDate(file.lastModified)}
+                    </div>
+                </div>
+                <div class="file-actions">
+                    <button class="btn btn-secondary btn-icon download-btn" title="Download">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M12 7L12 14M12 14L9 11M12 14L15 11" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                            <path d="M3 17V20C3 21.1046 3.89543 22 5 22H19C20.1046 22 21 21.1046 21 20V17" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                    </button>
+                    <button class="btn btn-danger btn-icon delete-btn" title="Delete">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M4 7H20M10 11V17M14 11V17" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                            <path d="M5 7L6 19C6 20.1046 6.89543 21 8 21H16C17.1046 21 18 20.1046 18 19L19 7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                            <path d="M9 7V4C9 3.44772 9.44772 3 10 3H14C14.5523 3 15 3.44772 15 4V7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                    </button>
+                </div>
+            `;
+
+                // Add event listeners for buttons
+                const downloadBtn = fileItem.querySelector('.download-btn');
+                downloadBtn.addEventListener('click', () => downloadFile(file.key, file.name));
+
+                const deleteBtn = fileItem.querySelector('.delete-btn');
+                deleteBtn.addEventListener('click', () => deleteFile(file.key, fileItem));
+
+                return fileItem;
+            }
+
+            // Download file
+            function downloadFile(fileKey, fileName) {
+                window.location.href = `${apiEndpoint}/download?key=${encodeURIComponent(fileKey)}&filename=${encodeURIComponent(fileName)}`;
+            }
+
+            // Delete file
+            function deleteFile(fileKey, fileElement) {
+                if (!confirm('Are you sure you want to delete this file?')) {
+                    return;
+                }
+
+                const formData = new FormData();
+                formData.append('key', fileKey);
+
+                fetch(`${apiEndpoint}/delete`, {
+                    method: 'POST',
+                    body: formData,
+                    headers: csrfToken ? {
+                        [csrfHeader]: csrfToken
+                    } : {}
+                })
+                    .then(response => {
+                        if (response.ok) {
+                            fileElement.remove();
+
+                            // Check if file list is empty
+                            if (fileList.children.length === 0) {
+                                emptyState.style.display = 'block';
+                            }
+
+                            showSuccessMessage();
+                        } else {
+                            throw new Error('Failed to delete file');
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error deleting file:', error);
+                        showErrorMessage();
+                    });
+            }
+
+            // Search functionality
+            searchInput.addEventListener('input', debounce(function() {
+                loadFiles(this.value);
+            }, 300));
+
+            // Helper functions
+            function formatSize(bytes) {
+                if (bytes === 0) return '0 Bytes';
+
+                const k = 1024;
+                const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
+                const i = Math.floor(Math.log(bytes) / Math.log(k));
+
+                return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+            }
+
+            function formatDate(timestamp) {
+                const date = new Date(timestamp);
+                return date.toLocaleDateString() + ' ' + date.toLocaleTimeString();
+            }
+
+            function debounce(func, wait) {
+                let timeout;
+                return function(...args) {
+                    const context = this;
+                    clearTimeout(timeout);
+                    timeout = setTimeout(() => func.apply(context, args), wait);
+                };
+            }
+
+            // Initialize
+            loadFiles();
+        });
+    </script>
+</body>
+</html>
